@@ -1,0 +1,159 @@
+plugins {
+	id "application";
+}
+
+def defaultMainClassName = "web.Server";
+
+application {
+	mainClass = project.hasProperty("mainClass") ? project.getProperty("mainClass") : defaultMainClassName;
+}
+
+repositories {
+	mavenCentral();
+}
+
+dependencies {
+	implementation group: "ch.qos.logback", name: "logback-classic", version: "1.5.18";
+	implementation group: "com.google.guava", name: "guava", version: "33.4.8-jre";
+
+	
+	def joobyVer = "4.0.6";
+	implementation group: "io.jooby", name: "jooby-netty", version: joobyVer;
+	implementation group: "io.jooby", name: "jooby-gson", version: joobyVer;
+	
+	def h2Ver = "2.2.220";
+	implementation group: "com.h2database", name: "h2", version: h2Ver;
+	
+	def hikariVer = "5.0.1";
+	implementation group: "com.zaxxer", name: "HikariCP", version: hikariVer;
+
+	def jdbiVer = "3.40.0";
+	implementation group: "org.jdbi", name: "jdbi3-core", version: jdbiVer;
+	implementation group: "org.jdbi", name: "jdbi3-sqlobject", version: jdbiVer;	
+	
+	def ovalVer =  "3.2.1";
+	implementation group: "net.sf.oval", name: "oval", version: ovalVer;
+	
+	// *** testing libraries *** //
+	def junitVer = "5.13.4";
+	testImplementation group: "org.junit.jupiter", name: "junit-jupiter-api", version: junitVer;
+	testRuntimeOnly group: "org.junit.jupiter", name: "junit-jupiter-engine", version: junitVer;
+	testImplementation group: "org.hamcrest", name: "hamcrest", version: "3.0";
+	testRuntimeOnly group: "org.junit.platform", name: "junit-platform-launcher"; 	
+	
+}
+
+test {
+	useJUnitPlatform();
+}
+
+/* convenience tasks for working with a project */
+
+tasks.register("createMissingSourceDirs") {
+	group = "Project";
+	description = "Create all of the missing source directories for this project.";
+	doFirst {
+		sourceSets.each { def sourceRoot ->
+			sourceRoot.allSource.srcDirTrees.each { def sourceDir ->
+				if(!sourceDir.dir.exists()) {
+					println "Creating source ${sourceDir}";
+					mkdir sourceDir.dir;
+				}
+			}
+		}
+	}
+}
+
+tasks.register("deleteEmptySourceDirs") {
+	group = "Project";
+	description = "Delete empty source directories.";
+	doFirst {
+		sourceSets.each { def sourceRoot ->
+			sourceRoot.allSource.srcDirTrees.each { def sourceDir ->
+				if(sourceDir.dir.exists() && sourceDir.dir.isDirectory() && sourceDir.dir.list().length == 0) {
+					println "Removing empty source ${sourceDir}";
+					sourceDir.dir.delete();
+				}
+			}
+		}
+	}
+}
+
+tasks.register("openProjectDir") {
+	group = "Project";
+	description = "Open the project directory in the system file manager.";
+	doFirst {
+		println("Opening: " + file(projectDir));
+		java.awt.Desktop.getDesktop().open(file(projectDir));
+	}
+}
+
+tasks.register("openBuildDir") {
+	group = "Project";
+	description = "Open the project build directory in the system file manager.";
+	doFirst {
+		println("Opening: " + file(buildDir));
+		java.awt.Desktop.getDesktop().open(file(buildDir));
+	}
+}
+
+tasks.register("generateWrapper", Wrapper) {
+	group = "Project";
+	gradleVersion = "8.14.3";
+	distributionType = Wrapper.DistributionType.BIN;
+}
+
+tasks.register("createGitIgnore") {
+	group = "Project";
+	description = "Create the project's .gitignore file.";
+
+	def gitIgnored="""
+		.gradle/
+		.nb-gradle/
+		.settings/
+		nbproject/
+		build/
+		bin/
+		dist/
+		tmp/
+		.classpath
+		.project
+		*.zip
+		*.tgz
+		*.tar.gz
+		*.class
+		*.jar
+		.DS_Store
+		!gradle-wrapper.jar
+		""";
+
+	doLast {
+		def file = new File(projectDir, ".gitignore");
+		if ( !file.exists() ) {
+			println("Creating .gitignore");
+
+			gitIgnored.lines().each { f ->
+				if(!f.trim().isBlank()) {
+					file.append(f.trim()+"\n");
+				}
+			}
+
+		} else {
+			println(".gitignore already exists");
+		}
+	}
+}
+
+tasks.register("info") {
+	group = "Project";
+	description = "Show version and location information for Java, Gradle, and project.";
+	doLast {
+		println "Java Version: " + org.gradle.internal.jvm.Jvm.current();
+		println "Java Home: " + org.gradle.internal.jvm.Jvm.current().getJavaHome();
+		println "Gradle Version: ${gradle.gradleVersion}";
+		println "Gradle Home: ${gradle.gradleHomeDir}";
+		println "Gradle User Home: ${gradle.gradleUserHomeDir}";
+		println "Project Location: ${projectDir}";
+		println "Project Build Location: ${buildDir}";
+	}
+}
